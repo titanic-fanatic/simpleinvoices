@@ -3231,30 +3231,45 @@ function calc_invoice_paid($inv_idField, $domain_id='') {
 function calc_customer_total($customer_id, $domain_id='', $isReal=false) {
 	global $LANG;
 	$domain_id = domain_id::get($domain_id);
+	
+    	$sql = "SELECT id FROM ".TB_PREFIX."invoices WHERE customer_id = :customer";
+	
+    	$sth = dbQuery($sql, ':customer', $customer_id);
+    	
+    	while ($row = $sth->fetch()) {
+		$invoices[] = $row['id'];
+    	}
+	
+	$invoice_total = 0;
+	for ($i = 0; $i < count($invoices); $i++) {
 
-	$real1 = '';
-	$real2 = '';
-	if ($isReal) {
+	    $real1 = '';
+	    $real2 = '';
+	    if ($isReal) {
 		$real1 = " LEFT JOIN ".TB_PREFIX."preferences pr ON (pr.pref_id = iv.preference_id AND pr.domain_id = iv.domain_id)";
 		$real2 = " AND pr.status = 1";
+	    }
+
+    	    $sql ="SELECT
+		    COALESCE(ROUND(SUM(ii.total), 2),  0) AS total 
+	    FROM
+		    ".TB_PREFIX."invoice_items ii INNER JOIN
+		    ".TB_PREFIX."invoices iv ON (iv.id = ii.invoice_id AND iv.domain_id = ii.domain_id)
+		    $real1
+	    WHERE  
+		    iv.customer_id  = :customer
+	    AND ii.invoice_id = :invoice
+	    AND ii.domain_id = :domain_id
+	    $real2";
+
+    	    $sth = dbQuery($sql, ':customer', $customer_id, ':invoice', $invoices[$i], ':domain_id',$domain_id);
+	    $invoice = $sth->fetch();
+	    
+	    $invoice_total += $invoice['total'];
 	}
 
-    $sql ="SELECT
-		COALESCE(SUM(ii.total),  0) AS total 
-	FROM
-		".TB_PREFIX."invoice_items ii INNER JOIN
-		".TB_PREFIX."invoices iv ON (iv.id = ii.invoice_id AND iv.domain_id = ii.domain_id)
-		$real1
-	WHERE  
-		iv.customer_id  = :customer
-	AND ii.domain_id = :domain_id
-	$real2";
-
-    $sth = dbQuery($sql, ':customer', $customer_id, ':domain_id',$domain_id);
-	$invoice = $sth->fetch();
-
 	//return number_format($invoice['total'],"#########.##");
-	return $invoice['total'];
+	return $invoice_total;
 }
 
 function calc_customer_paid($customer_id, $domain_id='', $isReal=false) {

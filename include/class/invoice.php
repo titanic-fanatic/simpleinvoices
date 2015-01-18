@@ -381,7 +381,7 @@ class invoice {
                        c.name AS customer,
                        DATE_FORMAT(date,'%Y-%m-%d') AS date,";
 
-                $sql .="(SELECT coalesce(SUM(ii.total), 0) FROM " .
+                $sql .="(SELECT coalesce(ROUND(SUM(ii.total), 2), 0) FROM " .
                 TB_PREFIX . "invoice_items ii WHERE ii.invoice_id = iv.id AND ii.domain_id = :domain_id) AS invoice_total,
                        (SELECT coalesce(SUM(ac_amount), 0) FROM " .
                 TB_PREFIX . "payment ap WHERE ap.ac_inv_id = iv.id AND ap.domain_id = :domain_id) AS INV_PAID,
